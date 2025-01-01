@@ -5,7 +5,7 @@ from authentication.models import Profile
 def map_view(request):
     # checking if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('authentication:login')
 
     try:
         profile = Profile.objects.get(user=request.user)
