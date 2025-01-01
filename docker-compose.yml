@@ -1,7 +1,19 @@
 services:
   web:
     build: .
-    command: ["bash", "-c", "source activate awm_env && python mapmyday/manage.py runserver 0.0.0.0:8001"]
+    command: >
+      bash -c "
+      apt-get update &&
+      apt-get install -y netcat &&
+      while ! nc -z db 5432; do
+        echo 'Waiting for database connection...';
+        sleep 2;
+      done;
+      source activate awm_env &&
+      python mapmyday/manage.py makemigrations &&
+      python mapmyday/manage.py migrate &&
+      python mapmyday/manage.py runserver 0.0.0.0:8001
+      "
     volumes:
       - ./mapmyday:/app/mapmyday
     ports:
@@ -23,7 +35,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U docker"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 10
