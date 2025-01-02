@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('map/', include('map.urls')),
     path('auth/', include('authentication.urls')),
-    path('', views.home_view, name='home'),
+    path('itinerary/', include('itinerary.urls')),
+    path('', include('map.urls')),
 ]
 

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Itinerary - MapMyDay{% endblock %}
+
+{% block content %}
+<div id="itinerary-container">
+    <h2>Hello, {{ user.username }}</h2>
+    <h3>Your Itinerary:</h3>
+    <div id="itinerary-list"></div>
+</div>
+
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/itinerary.css' %}">
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // itinerary data passed from backend
+        const itineraryData = {{ itinerary|safe }};
+
+        // function to render itinerary items
+        function renderItineraryList(data) {
+            const itineraryList = document.getElementById('itinerary-list');
+            itineraryList.innerHTML = '';
+
+            if (data.length > 0) {
+                data.forEach(item => {
+                    const itineraryItem = document.createElement('div');
+                    itineraryItem.className = 'itinerary-item';
+                    itineraryItem.innerHTML = `
+                        <h4>${item.name}</h4>
+                        <p><strong>Date:</strong> ${item.date}</p>
+                        <p><strong>Time:</strong> ${item.time}</p>
+                    `;
+                    itineraryList.appendChild(itineraryItem);
+                });
+            } else {
+                itineraryList.innerHTML = '<p>No locations added yet.</p>';
+            }
+        }
+        renderItineraryList(itineraryData);
+    });
+</script>
+{% endblock %}

@@ -82,16 +82,25 @@
     border: 2px solid #ee82ee;
 }
 
-.btn.btn-primary {
+.btn.btn-primary, button[type="submit"] {
     background-color: transparent;
     color: #ee82ee;
-    border: 0px;
-    padding: 0;
+    border: 1px solid #ee82ee;
+    padding: 10px 20px;
     font-size: 14px;
+    margin-top: 20px;
+    display: inline-block;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.btn.btn-primary .fas.fa-chevron-right {
-    font-size: 12px;
+.btn.btn-primary:hover, button[type="submit"]:hover {
+    background-color: #ee82ee;
+    color: #fff;
+    cursor: pointer;
 }
 
 .footer {

@@ -27,11 +27,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-5d!6klfuit-d-90nggu5*=9+s+ole6&=%=gvyo^11g6jj(1xew'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
-
-
 
 # Application definition
 
@@ -46,6 +44,7 @@ INSTALLED_APPS = [
     'map',
     'authentication',
     'mapmyday',
+    'itinerary',
 ]
 
 MIDDLEWARE = [

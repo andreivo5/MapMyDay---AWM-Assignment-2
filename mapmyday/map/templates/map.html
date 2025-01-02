@@ -7,11 +7,32 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
     <link rel="stylesheet" href="{% static 'css/map.css' %}">
     <div id="search-container">
-        <input type="text" id="search-bar" placeholder="Search for an area...">
-        <button id="search-button">Search</button>
+        <input type="text" id="search-bar" placeholder="Search for a city or area...">
+        <button id="search-button" class="btn btn-primary">Search</button>
     </div>
     <div id="map"></div>
+    <div class="location-list-header">
+        <h2>Attractions nearby:</h2>
+    </div>
     <div id="location-list" class="location-list-container"></div>
+    </div>
+
+    <!-- Modal for adding to itinerary -->
+    <div id="itinerary-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Add to My Itinerary</h3>
+            <p id="modal-location-details"></p>
+            <form id="itinerary-form">
+                <label for="itinerary-date">Date:</label>
+                <input type="date" id="itinerary-date" required />
+                
+                <label for="itinerary-time">Time:</label>
+                <input type="time" id="itinerary-time" required />
+                
+                <button id="modal-save-button" type="button" class="btn btn-primary">Save</button>
+            </form>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
@@ -24,6 +45,84 @@
         }).addTo(map);
 
         const markersLayer = L.layerGroup().addTo(map);
+
+        // modal logic
+        const modal = document.getElementById("itinerary-modal");
+        const modalClose = document.querySelector(".modal .close");
+        const modalLocationDetails = document.getElementById("modal-location-details");
+        const modalSaveButton = document.getElementById("modal-save-button");
+        let currentLocation;
+
+        modalClose.onclick = () => modal.style.display = "none";
+        window.onclick = (event) => {
+            if (event.target === modal) modal.style.display = "none";
+        };
+
+        // function for modal
+        function openItineraryModal(locationDetails) {
+            modalLocationDetails.innerHTML = `
+                <b>${locationDetails.name}</b><br>
+                <strong>Type:</strong> ${locationDetails.type}<br>
+                <strong>Coordinates:</strong> (${locationDetails.lat}, ${locationDetails.lon})<br>
+                <strong>Address:</strong> ${locationDetails.address}<br>
+                <strong>Website:</strong> ${locationDetails.website !== "N/A" ? `<a href="${locationDetails.website}" target="_blank">${locationDetails.website}</a>` : "N/A"}<br>
+                <strong>Phone:</strong> ${locationDetails.phone}<br>
+                <strong>Email:</strong> ${locationDetails.email}<br>
+                <strong>Opening Hours:</strong> ${locationDetails.openingHours}<br>
+            `;
+            currentLocation = locationDetails;
+
+            // display modal
+            modal.style.display = "block";
+        }
+
+        // modal save button
+        modalSaveButton.onclick = () => {
+            if (!currentLocation) {
+                alert("No location data available.");
+                return;
+            }
+
+            const dateField = document.getElementById("itinerary-date");
+            const timeField = document.getElementById("itinerary-time");
+
+            const itineraryData = {
+                name: currentLocation.name,
+                latitude: currentLocation.lat,
+                longitude: currentLocation.lon,
+                address: currentLocation.address,
+                website: currentLocation.website,
+                phone: currentLocation.phone,
+                email: currentLocation.email,
+                openingHours: currentLocation.openingHours,
+                date: dateField.value || "N/A",
+                time: timeField.value || "N/A",
+            };
+
+            fetch('/itinerary/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(itineraryData),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to add location');
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    alert('Location added to your itinerary!');
+                    modal.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error adding location:', error);
+                    alert('An error occurred. Please try again.');
+                });
+        };
+
 
         // detecting user's location
         navigator.geolocation.getCurrentPosition(
@@ -75,6 +174,32 @@
             }
         });
 
+        // small function to format location types
+        function formatLocationType(location) {
+            const typeMappings = {
+                attraction: "Attraction",
+                museum: "Museum",
+                zoo: "Zoo",
+                viewpoint: "Viewpoint",
+                theme_park: "Theme Park",
+                park: "Park",
+                garden: "Garden",
+                nature_reserve: "Nature Reserve",
+                stadium: "Stadium",
+                swimming_pool: "Swimming Pool",
+                restaurant: "Restaurant",
+                pub: "Pub",
+                bar: "Bar",
+                castle: "Castle",
+                ruins: "Ruins",
+                monument: "Monument",
+                memorial: "Memorial",
+            };
+        
+            const category = location.tags.tourism || location.tags.leisure || location.tags.amenity || location.tags.historic;
+            return typeMappings[category] || "Unknown";
+        }        
+
         // function to fetch Overpass data for an area
         function fetchNearbyAttractions(latitude, longitude, radius = 5000) {
             const overpassQuery = `
@@ -107,39 +232,71 @@
                     // adding markers to map and updating location list
                     const locations = data.elements.filter(location => location.lat && location.lon && location.tags.name);
                     locations.forEach((location) => {
-                        // marker popup fields:
                         const popupContent = `
                             <b>${location.tags.name}</b><br>
-                            <strong>Type:</strong> ${location.tags.tourism || location.tags.leisure || location.tags.amenity || location.tags.historic || "Unknown"}<br>
+                            <strong>Type:</strong> ${formatLocationType(location)}<br>
                             <strong>Address:</strong> ${location.tags["addr:full"] || location.tags["addr:street"] || 'N/A'}<br>
                             <strong>Website:</strong> ${location.tags.website ? `<a href="${location.tags.website}" target="_blank">${location.tags.website}</a>` : 'N/A'}<br>
                             <strong>Phone:</strong> ${location.tags.phone || 'N/A'}<br>
                             <strong>Email:</strong> ${location.tags.email || 'N/A'}<br>
                             <strong>Opening Hours:</strong> ${location.tags.opening_hours || 'N/A'}<br>
+                            <button class="btn btn-primary add-itinerary-btn" data-lat="${location.lat}" data-lon="${location.lon}" data-name="${location.tags.name}">Add to My Itinerary</button>
                         `;
-        
-                        L.marker([location.lat, location.lon])
+
+                        const marker = L.marker([location.lat, location.lon])
                             .addTo(markersLayer)
                             .bindPopup(popupContent);
-        
+
+                        // closing any other open popups
+                        marker.on("click", () => {
+                            map.closePopup();
+                            marker.openPopup();
+                        });
+                        // attaching event to itinerary button inside popup
+                        marker.on("popupopen", (e) => {
+                            const popupContainer = e.popup._contentNode;
+                            const addButton = popupContainer.querySelector(".add-itinerary-btn");
+                            if (addButton) {
+                                addButton.onclick = () => {
+                                    const locationDetails = {
+                                        name: addButton.getAttribute("data-name"),
+                                        lat: addButton.getAttribute("data-lat"),
+                                        lon: addButton.getAttribute("data-lon"),
+                                        type: popupContainer.querySelector("[data-field='type']")?.textContent || "N/A",
+                                        address: popupContainer.querySelector("[data-field='address']")?.textContent || "N/A",
+                                        website: popupContainer.querySelector("[data-field='website']")?.textContent || "N/A",
+                                        phone: popupContainer.querySelector("[data-field='phone']")?.textContent || "N/A",
+                                        email: popupContainer.querySelector("[data-field='email']")?.textContent || "N/A",
+                                        openingHours: popupContainer.querySelector("[data-field='opening_hours']")?.textContent || "N/A",
+                                    };
+                                    openItineraryModal(locationDetails);
+                                };
+                            }
+                        });                        
+
                         // updating location list
                         if (locationListContainer.children.length < 10) {
                             const locationItem = document.createElement("div");
                             locationItem.className = "location-item";
                             locationItem.innerHTML = popupContent;
-                            locationItem.addEventListener("click", function () {
-                                map.setView([location.lat, location.lon], 17);
-                                const mapContainer = document.getElementById("map");
-                                if (mapContainer) {
-                                    mapContainer.scrollIntoView({ behavior: "smooth", block: "start" });
-                                }
-                            });
-                            
+                            locationItem.querySelector(".add-itinerary-btn").onclick = () => {
+                                currentLocation = {
+                                    name: location.tags.name,
+                                    lat: location.lat,
+                                    lon: location.lon,
+                                };
+                                modalLocationDetails.innerHTML = popupContent;
+                                modal.style.display = "block";
+                            };
                             locationListContainer.appendChild(locationItem);
                         }
                     });
                 })
                 .catch(error => console.error("Error with Overpass API:", error));
-        }        
+        }
+
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        }
     </script>
 {% endblock %}
