@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   web:
     build: .
@@ -23,6 +25,8 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    networks:
+      - mynet
 
   db:
     image: kartoza/postgis:latest
@@ -39,6 +43,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - mynet
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -49,18 +55,26 @@ services:
       - "20080:80"
     depends_on:
       - db
+    networks:
+      - mynet
 
   nginx:
     image: nginx:latest
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - web
     volumes:
       - ./nginx:/etc/nginx/conf.d
-    links:
-      - web
-      - pgadmin
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - mynet
 
 volumes:
   pgdata:
+
+networks:
+  mynet:
+    driver: bridge
+
